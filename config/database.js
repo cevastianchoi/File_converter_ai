@@ -1,5 +1,13 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: './config.env' });
+
+// 환경 변수 디버깅
+console.log('환경 변수 확인:');
+console.log('DB_HOST:', process.env.DB_HOST);
+console.log('DB_USER:', process.env.DB_USER);
+console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***설정됨***' : '***설정되지 않음***');
+console.log('DB_NAME:', process.env.DB_NAME);
+console.log('DB_PORT:', process.env.DB_PORT);
 
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
@@ -10,10 +18,6 @@ const dbConfig = {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    // MySQL 성능 최적화 설정
-    acquireTimeout: 60000,
-    timeout: 60000,
-    reconnect: true,
     charset: 'utf8mb4'
 };
 

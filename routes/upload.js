@@ -123,9 +123,18 @@ router.post('/confirm', requireAuth, async (req, res) => {
         // 소스 데이터를 DB에 저장 (첫 행은 컬럼명, 나머지는 데이터)
         const columns = sourceColumns;
         const rows = sourceData && Array.isArray(sourceData) ? sourceData.slice(1) : [];
+        
+        // 데이터 크기 제한 및 최적화 (최대 10,000행)
+        const maxRows = 10000;
+        const limitedRows = rows.slice(0, maxRows);
+        
+        if (rows.length > maxRows) {
+            console.warn(`데이터가 ${maxRows}행을 초과하여 ${maxRows}행만 저장됩니다.`);
+        }
+        
         await pool.execute(
             'INSERT INTO source_data (user_id, data) VALUES (?, ?)',
-            [userId, JSON.stringify([columns, ...rows])]
+            [userId, JSON.stringify([columns, ...limitedRows])]
         );
 
         // 템플릿 컬럼을 DB에 저장

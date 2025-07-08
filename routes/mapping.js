@@ -129,37 +129,43 @@ router.post('/generate-excel', requireAuth, async (req, res) => {
         // 진단용 로그 추가
         console.log('sourceColumns:', sourceColumns);
         console.log('validMappings:', mappings);
-        console.log('sourceRowsData[0]:', sourceRowsData[0]);
         console.log('sourceRowsData 길이:', sourceRowsData.length);
 
         // 매핑된 쌍만 추출
         const validMappings = mappings.filter(m => m.source && m.target);
         console.log('유효한 매핑:', validMappings);
 
-        // 결과 데이터 생성
+        // 결과 데이터 생성 - 메모리 효율성 향상
         const resultData = [];
         const resultColumns = validMappings.map(m => m.target);
 
         // 헤더 추가
         resultData.push(resultColumns);
 
-        // 데이터 매핑
+        // 컬럼 인덱스 미리 계산 (성능 최적화)
+        const columnIndexMap = new Map();
+        validMappings.forEach(mapping => {
+            const sourceIndex = sourceColumns.findIndex(col => {
+                if (typeof col === 'string' && typeof mapping.source === 'string') {
+                    return col.trim() === mapping.source.trim();
+                }
+                return col === mapping.source;
+            });
+            columnIndexMap.set(mapping.source, sourceIndex);
+        });
+
+        // 데이터 매핑 - 최적화된 방식
         for (let i = 0; i < sourceRowsData.length; i++) {
             const sourceRow = sourceRowsData[i];
-            const resultRow = [];
+            const resultRow = new Array(validMappings.length);
             
-            for (const mapping of validMappings) {
+            for (let j = 0; j < validMappings.length; j++) {
+                const mapping = validMappings[j];
                 let value = '';
                 
                 if (Array.isArray(sourceRow)) {
-                    // 배열 형태인 경우
-                    const sourceIndex = sourceColumns.findIndex(col => {
-                        if (typeof col === 'string' && typeof mapping.source === 'string') {
-                            return col.trim() === mapping.source.trim();
-                        }
-                        return col === mapping.source;
-                    });
-                    
+                    // 배열 형태인 경우 - 미리 계산된 인덱스 사용
+                    const sourceIndex = columnIndexMap.get(mapping.source);
                     if (sourceIndex >= 0 && sourceIndex < sourceRow.length) {
                         value = sourceRow[sourceIndex] || '';
                     }
@@ -173,7 +179,7 @@ router.post('/generate-excel', requireAuth, async (req, res) => {
                     value = '';
                 }
                 
-                resultRow.push(value);
+                resultRow[j] = value;
             }
             
             // 첫 번째 행만 로그 출력 (무한 반복 방지)
@@ -184,9 +190,16 @@ router.post('/generate-excel', requireAuth, async (req, res) => {
             resultData.push(resultRow);
         }
 
-        // 엑셀 파일 생성
+        // 엑셀 파일 생성 - 최적화된 방식
         const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.aoa_to_sheet(resultData);
+        
+        // 스트리밍 방식으로 워크시트 생성 (메모리 효율성 향상)
+        const worksheet = XLSX.utils.aoa_to_sheet(resultData, {
+            cellStyles: false,
+            cellDates: false,
+            cellNF: false,
+            cellHTML: false
+        });
 
         // 컬럼 너비 자동 조정
         const colWidths = resultColumns.map(col => ({ wch: Math.max(col.length, 10) }));
@@ -199,8 +212,15 @@ router.post('/generate-excel', requireAuth, async (req, res) => {
         const fileName = `변환 결과_${userId}_${today}.xlsx`;
         const filePath = path.join('uploads', fileName);
 
-        // 파일 저장
-        XLSX.writeFile(workbook, filePath);
+        // 최적화된 파일 저장 옵션
+        const writeOptions = {
+            bookType: 'xlsx',
+            bookSST: false,
+            type: 'file',
+            compression: true
+        };
+        
+        XLSX.writeFile(workbook, filePath, writeOptions);
 
         // 파일 생성 후 source_data, result_data 테이블에서 해당 user_id 데이터 삭제
         await pool.execute('DELETE FROM source_data WHERE user_id = ?', [userId]);

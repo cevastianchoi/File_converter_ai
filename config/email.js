@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: './config.env' });
 
 // SMTP 트랜스포터 생성
 const transporter = nodemailer.createTransport({

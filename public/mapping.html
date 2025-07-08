@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>매핑 규칙 설정 - 런모아 라이브커머스 주문서 솔루션</title>
+    <title> 런모아 파일 번환 솔루션 - 매핑 규칙 설정 </title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -29,6 +29,12 @@
         }
         .mapping-select {
             margin-bottom: 20px;
+        }
+        .mapping-select select {
+            width: 320px;
+            height: 32px;
+            font-size: 16px;
+            padding: 6px 12px;
         }
         .mapping-table {
             width: 100%;
@@ -126,7 +132,7 @@
 </head>
 <body>
     <div class="mapping-container">
-        <div class="header" id="mappingHeader">매핑 규칙 설정하기</div>
+        <div class="header" id="mappingHeader">파일 변환 매핑 규칙 설정하기</div>
         <div id="alert" class="alert"></div>
         <div class="mapping-select">
             <label for="mappingRuleSelect">[ 매핑 규칙 선택 ]</label>
@@ -136,9 +142,9 @@
         <table class="mapping-table" id="mappingTable">
             <thead>
                 <tr>
-                    <th>주문서 원본 컬럼</th>
+                    <th>원본 파일 컬럼</th>
                     <th>→</th>
-                    <th>발주서 최종 컬럼</th>
+                    <th>결과 파일 컬럼</th>
                 </tr>
             </thead>
             <tbody id="mappingTableBody"></tbody>
@@ -247,30 +253,21 @@
         function renderMappingTable() {
             const tbody = document.getElementById('mappingTableBody');
             tbody.innerHTML = '';
-            mappingRows.forEach((row, idx) => {
+            sourceColumns.forEach((srcCol, idx) => {
                 const tr = document.createElement('tr');
-                // 소스 컬럼
+                // 소스 컬럼명(텍스트)
                 const tdSource = document.createElement('td');
-                const selectSource = document.createElement('select');
-                sourceColumns.forEach(col => {
-                    const opt = document.createElement('option');
-                    opt.value = col;
-                    opt.textContent = col;
-                    if (row.source === col) opt.selected = true;
-                    selectSource.appendChild(opt);
-                });
-                selectSource.onchange = e => { mappingRows[idx].source = e.target.value; };
-                tdSource.appendChild(selectSource);
+                tdSource.textContent = srcCol;
                 // 화살표
                 const tdArrow = document.createElement('td');
                 tdArrow.textContent = '→';
-                // 결과 컬럼
+                // 결과 컬럼 select box
                 const tdTarget = document.createElement('td');
                 const selectTarget = document.createElement('select');
-                // 첫 번째 옵션: 매핑되지 않음
+                // 첫 번째 옵션: 매칭 결과 값 없음
                 const emptyOpt = document.createElement('option');
                 emptyOpt.value = '';
-                emptyOpt.textContent = '--- 매핑되지 않음 ---';
+                emptyOpt.textContent = '매칭 결과 값 없음';
                 selectTarget.appendChild(emptyOpt);
                 resultColumns.forEach(col => {
                     const opt = document.createElement('option');
@@ -278,9 +275,9 @@
                     opt.textContent = col;
                     selectTarget.appendChild(opt);
                 });
-                // Gemini 매핑 결과가 resultColumns에 없거나 null/빈 값이면 '매핑되지 않음' 선택
-                selectTarget.value = resultColumns.includes(row.target) ? row.target : '';
-                selectTarget.onchange = e => { mappingRows[idx].target = e.target.value; };
+                // 기본값: 매핑이 있으면 선택, 없으면 '매칭 결과 값 없음'
+                selectTarget.value = (mappingRows[idx] && resultColumns.includes(mappingRows[idx].target)) ? mappingRows[idx].target : '';
+                selectTarget.onchange = e => { mappingRows[idx] = { source: srcCol, target: e.target.value }; };
                 tdTarget.appendChild(selectTarget);
                 // 행 조립
                 tr.appendChild(tdSource);

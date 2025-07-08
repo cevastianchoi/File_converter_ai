@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>런모아 라이브커머스 주문서 솔루션 - 대시보드</title>
+    <title>런모아 파일 변환 솔루션 - 대시보드</title>
     <style>
         * {
             margin: 0;
@@ -304,11 +304,13 @@
             background: #f8f9ff;
         }
     </style>
+    <!-- SheetJS 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="header">
-            <div class="logo">런모아 라이브커머스 주문서, 변환 양식 업로드</div>
+            <div class="logo">런모아 파일 번환 서비스 - 양식 업로드</div>
             <div class="user-info">
                 <span class="user-name" id="userName"></span>
                 <button class="btn-logout" onclick="logout()">로그아웃</button>
@@ -342,9 +344,14 @@
         <div class="upload-section">
             <div class="upload-area" id="sourceUploadArea">
                 <div class="upload-icon">📂</div>
-                <div class="upload-text">주문서 파일을 여기에 끌어다 놓으세요</div>
+                <div class="upload-text">변환할 파일을 여기에 끌어다 놓으세요</div>
                 <div class="upload-hint">(엑셀/CSV 파일 지원) 또는 <span style="color: #667eea; cursor: pointer;" onclick="document.getElementById('sourceFile').click()">[파일 선택]</span></div>
                 <input type="file" id="sourceFile" class="file-input" accept=".xlsx,.xls,.csv">
+                <div class="file-name" id="sourceFileName" style="margin-top:8px; color:#667eea; font-weight:500;"></div>
+                <div class="preview-table" id="sourcePreviewTable" style="display:none;">
+                    <h4>소스 파일 미리보기 (상위 5줄)</h4>
+                    <table id="sourcePreviewTableContent"></table>
+                </div>
             </div>
 
             <div class="upload-area" id="templateUploadArea">
@@ -352,18 +359,23 @@
                 <div class="upload-text">변환 양식 파일을 여기에 끌어다 놓으세요</div>
                 <div class="upload-hint">(엑셀/CSV 파일 지원) 또는 <span style="color: #667eea; cursor: pointer;" onclick="document.getElementById('templateFile').click()">[파일 선택]</span></div>
                 <input type="file" id="templateFile" class="file-input" accept=".xlsx,.xls,.csv">
+                <div class="file-name" id="templateFileName" style="margin-top:8px; color:#764ba2; font-weight:500;"></div>
+                <div class="preview-table" id="templatePreviewTable" style="display:none;">
+                    <h4>양식 파일 미리보기 (상위 5줄)</h4>
+                    <table id="templatePreviewTableContent"></table>
+                </div>
             </div>
 
             <div class="file-info" id="fileInfo">
                 <div class="file-item">
                     <div>
-                        <div class="file-name" id="sourceFileName">-</div>
+                        <div class="file-name" id="sourceFileNameOld">-</div>
                         <div class="file-size" id="sourceFileSize">-</div>
                     </div>
                 </div>
                 <div class="file-item">
                     <div>
-                        <div class="file-name" id="templateFileName">-</div>
+                        <div class="file-name" id="templateFileNameOld">-</div>
                         <div class="file-size" id="templateFileSize">-</div>
                     </div>
                 </div>
@@ -381,7 +393,7 @@
 
             <div class="button-group">
                 <button class="btn btn-primary" id="confirmBtn" onclick="confirmUpload()" disabled>확인</button>
-                <button class="btn btn-secondary" onclick="resetUpload()">다시 업로드</button>
+                <button class="btn btn-secondary" id="previewBtn" type="button" onclick="showPreviewTables()" disabled>파일 미리보기</button>
             </div>
         </div>
 
@@ -499,7 +511,7 @@
             if (file) {
                 uploadedFiles.source = file;
                 document.getElementById('sourceFileName').textContent = file.name;
-                document.getElementById('sourceFileSize').textContent = formatFileSize(file.size);
+                document.getElementById('sourcePreviewTable').style.display = 'none';
                 checkFilesReady();
             }
         }
@@ -508,7 +520,7 @@
             if (file) {
                 uploadedFiles.template = file;
                 document.getElementById('templateFileName').textContent = file.name;
-                document.getElementById('templateFileSize').textContent = formatFileSize(file.size);
+                document.getElementById('templatePreviewTable').style.display = 'none';
                 checkFilesReady();
             }
         }
@@ -516,12 +528,14 @@
         function checkFilesReady() {
             const hasSource = uploadedFiles.source !== null;
             const hasTemplate = uploadedFiles.template !== null;
-            
-            if (hasSource && hasTemplate) {
-                document.getElementById('fileInfo').classList.add('show');
-                // 파일 두 개가 준비되면 미리보기 요청
-                previewFiles();
-            }
+            document.getElementById('confirmBtn').disabled = !(hasSource && hasTemplate);
+            document.getElementById('previewBtn').disabled = !(hasSource && hasTemplate);
+        }
+
+        function showPreviewTables() {
+            if (!uploadedFiles.source || !uploadedFiles.template) return;
+            previewSingleFile(uploadedFiles.source, 'source', 5);
+            previewSingleFile(uploadedFiles.template, 'template', 5);
         }
 
         // 파일 업로드 후 미리보기만 요청하는 함수
@@ -565,12 +579,25 @@
 
         // "확인" 버튼 클릭 시 매핑 준비 및 페이지 이동
         async function confirmUpload() {
-            if (!window._previewUploadData) {
-                showAlert('미리보기 데이터가 없습니다. 파일을 다시 업로드해주세요.', 'error');
+            if (!uploadedFiles.source || !uploadedFiles.template) {
+                showAlert('파일을 모두 업로드해주세요.', 'error');
                 return;
             }
             showLoading(true);
             try {
+                // 소스/템플릿 파일을 직접 읽어서 컬럼명/전체 데이터 추출
+                const [sourceRows, templateRows] = await Promise.all([
+                    readFileData(uploadedFiles.source),
+                    readFileData(uploadedFiles.template)
+                ]);
+                const sourceColumns = sourceRows[0] || [];
+                const templateColumns = templateRows[0] || [];
+                window._previewUploadData = {
+                    sourceColumns,
+                    templateColumns,
+                    sourceData: sourceRows
+                };
+
                 // 매핑 준비 요청 (서버에 컬럼 정보 저장)
                 const confirmRes = await fetch('/api/upload/confirm', {
                     method: 'POST',
@@ -579,14 +606,11 @@
                 });
                 const confirmData = await confirmRes.json();
                 if (confirmRes.ok) {
-                    // Gemini 매핑 결과를 저장
                     localStorage.setItem('uploadedMapping', JSON.stringify(confirmData.mapping));
-                    // 매핑에 필요한 데이터 저장 (localStorage 등)
                     localStorage.setItem('uploadedData', JSON.stringify({
                         sourceColumns: window._previewUploadData.sourceColumns,
                         templateColumns: window._previewUploadData.templateColumns
                     }));
-                    // 매핑 페이지로 이동
                     window.location.href = '/mapping';
                 } else {
                     showAlert(confirmData.error || '매핑 준비 중 오류가 발생했습니다.', 'error');
@@ -680,6 +704,94 @@
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 엑셀/CSV 미리보기(상위 10줄) 함수
+        function previewSingleFile(file, type, rowCount) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let data = e.target.result;
+                let rows = [];
+                if (file.name.endsWith('.csv')) {
+                    rows = data.split('\n').map(line => line.split(',')).slice(0, rowCount + 1);
+                } else {
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    // 전체를 읽고 상위 6줄만 추출
+                    rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }).slice(0, rowCount + 1);
+                }
+                renderPreviewTable(type, rows);
+            };
+            if (file.name.endsWith('.csv')) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsBinaryString(file);
+            }
+        }
+
+        function renderPreviewTable(type, rows) {
+            if (rows.length === 0) {
+                document.getElementById(type === 'source' ? 'sourcePreviewTable' : 'templatePreviewTable').style.display = 'none';
+                return;
+            }
+            // 컬럼명
+            const columns = rows[0];
+            // 데이터(최대 5줄)
+            const dataRows = rows.slice(1, 6);
+
+            const tableId = type === 'source' ? 'sourcePreviewTableContent' : 'templatePreviewTableContent';
+            const tableDivId = type === 'source' ? 'sourcePreviewTable' : 'templatePreviewTable';
+            const table = document.getElementById(tableId);
+            table.innerHTML = '';
+
+            // 헤더
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            columns.forEach(cell => {
+                const th = document.createElement('th');
+                th.textContent = cell;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // 바디
+            const tbody = document.createElement('tbody');
+            dataRows.forEach(row => {
+                const tr = document.createElement('tr');
+                columns.forEach((_, idx) => {
+                    const td = document.createElement('td');
+                    td.textContent = row && row[idx] !== undefined ? row[idx] : '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            document.getElementById(tableDivId).style.display = 'block';
+        }
+
+        // 파일 전체를 읽어서 2차원 배열로 반환
+        function readFileData(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    let data = e.target.result;
+                    let rows = [];
+                    if (file.name.endsWith('.csv')) {
+                        rows = data.split('\n').map(line => line.split(','));
+                    } else {
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    }
+                    resolve(rows);
+                };
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsBinaryString(file);
+                }
+            });
         }
     </script>
 </body>

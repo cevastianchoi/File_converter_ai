@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>런모아 라이브커머스 주문서 솔루션 - 회원가입</title>
+    <title>런모아 파일 변환 솔루션 - 회원가입</title>
     <style>
         * {
             margin: 0;
@@ -37,18 +37,17 @@
             padding-bottom: 15px;
         }
 
+        /* form-grid를 flex column으로 변경 */
         .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
         }
 
         .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .form-group label {
@@ -184,25 +183,13 @@
         }
 
         .id-check-section {
-            display: flex;
-            gap: 10px;
-            align-items: end;
-        }
-
-        .id-check-section .form-group {
-            flex: 1;
-        }
-
-        .id-check-section .btn {
-            padding: 12px 15px;
-            white-space: nowrap;
+            margin-bottom: 0;
         }
 
         @media (max-width: 768px) {
             .form-grid {
-                grid-template-columns: 1fr;
+                flex-direction: column;
             }
-            
             .button-group {
                 flex-direction: column;
             }
@@ -212,22 +199,20 @@
 <body>
     <div class="register-container">
         <div class="logo">
-            런모아 라이브커머스 주문서 솔루션 회원 가입
+            런모아 파일 변환 솔루션 - 회원가입
         </div>
 
         <div id="alert" class="alert"></div>
 
         <form id="registerForm">
             <div class="form-grid">
-                <div class="id-check-section full-width">
-                    <div class="form-group">
-                        <label for="userId">회원 ID (ID 중복 체크)</label>
-                        <input type="text" id="userId" name="userId" required>
-                        <div class="validation-message" id="userIdValidation"></div>
+                <div class="form-group id-check-section">
+                    <label for="userId" style="display:block; margin-bottom:12px;">회원 ID (ID 중복 체크)</label>
+                    <div style="display: flex; gap: 10px; align-items: end;">
+                        <input type="text" id="userId" name="userId" required style="flex:1;">
+                        <button type="button" class="btn btn-secondary" onclick="checkUserId()">중복 체크</button>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="checkUserId()">중복 체크</button>
                 </div>
-
                 <div class="form-group">
                     <label for="password">비밀번호</label>
                     <input type="password" id="password" name="password" required>
@@ -235,47 +220,39 @@
                         비밀번호는 8자리 이상 영어 대문자, 소문자, 숫자와 특수문자를 포함해야 합니다.
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label for="passwordConfirm">비밀번호(확인)</label>
                     <input type="password" id="passwordConfirm" name="passwordConfirm" required>
                     <div class="validation-message" id="passwordConfirmValidation"></div>
                 </div>
-
                 <div class="form-group">
                     <label for="name">이름</label>
                     <input type="text" id="name" name="name" required>
                 </div>
-
                 <div class="form-group">
                     <label for="phone">휴대폰 번호</label>
                     <input type="text" id="phone" name="phone" placeholder="010-0000-0000" required>
                     <div class="validation-message" id="phoneValidation"></div>
                 </div>
-
                 <div class="form-group">
                     <label for="email">사업장 이메일</label>
                     <input type="email" id="email" name="email" required>
                     <div class="validation-message" id="emailValidation"></div>
                 </div>
-
                 <div class="form-group">
                     <label for="businessName">사업장 상호명</label>
                     <input type="text" id="businessName" name="businessName" required>
                 </div>
-
                 <div class="form-group">
                     <label for="businessPhone">사업장 전화번호</label>
                     <input type="text" id="businessPhone" name="businessPhone" required>
                     <div class="validation-message" id="businessPhoneValidation"></div>
                 </div>
-
-                <div class="form-group full-width">
+                <div class="form-group">
                     <label for="businessAddress">사업장 주소</label>
                     <input type="text" id="businessAddress" name="businessAddress" required>
                 </div>
             </div>
-
             <div class="button-group">
                 <button type="button" class="btn btn-danger" onclick="resetForm()">초기화</button>
                 <button type="submit" class="btn btn-primary">회원 가입</button>
@@ -295,7 +272,7 @@
         // 실시간 유효성 검사
         document.getElementById('userId').addEventListener('input', function() {
             userIdChecked = false;
-            clearValidation('userId');
+            // clearValidation('userId'); // 메시지 제거
         });
 
         document.getElementById('password').addEventListener('input', validatePassword);
@@ -308,7 +285,7 @@
             const userId = document.getElementById('userId').value;
             
             if (!userId) {
-                showValidation('userId', '회원 ID를 입력해주세요.', 'error');
+                alert('회원 ID를 입력해주세요.');
                 return;
             }
 
@@ -324,15 +301,15 @@
                 const data = await response.json();
                 
                 if (data.available) {
-                    showValidation('userId', data.message, 'success');
                     userIdChecked = true;
+                    alert(data.message);
                 } else {
-                    showValidation('userId', data.message, 'error');
                     userIdChecked = false;
+                    alert('이미 등록된 회원 ID입니다');
                 }
             } catch (error) {
                 console.error('ID 중복 체크 오류:', error);
-                showValidation('userId', 'ID 중복 체크 중 오류가 발생했습니다.', 'error');
+                alert('ID 중복 체크 중 오류가 발생했습니다.');
             }
         }
 

@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>런모아 라이브커머스 주문서 솔루션 - 대시보드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .btn-logout {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-logout:hover {
+            background: #c82333;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #f8fff8;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            display: none;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .file-size {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .stats-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stats-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .preview-table {
+            display: none;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .preview-table.show {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 500;
+        }
+
+        tr:hover {
+            background: #f8f9ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="logo">런모아 라이브커머스 주문서, 변환 양식 업로드</div>
+            <div class="user-info">
+                <span class="user-name" id="userName"></span>
+                <button class="btn-logout" onclick="logout()">로그아웃</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="stats-section">
+            <div class="stats-title">📊 금일 처리 현황</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalAttempts">0</div>
+                    <div class="stat-label">총 변환 시도</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="successCount">0</div>
+                    <div class="stat-label">✅ 처리 성공</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="errorCount">0</div>
+                    <div class="stat-label">⚠️ 오류 발견</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="lastSentTime">-</div>
+                    <div class="stat-label">🚀 최근 전송</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area" id="sourceUploadArea">
+                <div class="upload-icon">📂</div>
+                <div class="upload-text">주문서 파일을 여기에 끌어다 놓으세요</div>
+                <div class="upload-hint">(엑셀/CSV 파일 지원) 또는 <span style="color: #667eea; cursor: pointer;" onclick="document.getElementById('sourceFile').click()">[파일 선택]</span></div>
+                <input type="file" id="sourceFile" class="file-input" accept=".xlsx,.xls,.csv">
+            </div>
+
+            <div class="upload-area" id="templateUploadArea">
+                <div class="upload-icon">📂</div>
+                <div class="upload-text">변환 양식 파일을 여기에 끌어다 놓으세요</div>
+                <div class="upload-hint">(엑셀/CSV 파일 지원) 또는 <span style="color: #667eea; cursor: pointer;" onclick="document.getElementById('templateFile').click()">[파일 선택]</span></div>
+                <input type="file" id="templateFile" class="file-input" accept=".xlsx,.xls,.csv">
+            </div>
+
+            <div class="file-info" id="fileInfo">
+                <div class="file-item">
+                    <div>
+                        <div class="file-name" id="sourceFileName">-</div>
+                        <div class="file-size" id="sourceFileSize">-</div>
+                    </div>
+                </div>
+                <div class="file-item">
+                    <div>
+                        <div class="file-name" id="templateFileName">-</div>
+                        <div class="file-size" id="templateFileSize">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-table" id="previewTable">
+                <h3>파일 미리보기 (첫 20행)</h3>
+                <table id="previewTableContent">
+                    <thead>
+                        <tr id="previewHeader"></tr>
+                    </thead>
+                    <tbody id="previewBody"></tbody>
+                </table>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="confirmBtn" onclick="confirmUpload()" disabled>확인</button>
+                <button class="btn btn-secondary" onclick="resetUpload()">다시 업로드</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>파일 처리 중...</p>
+        </div>
+    </div>
+
+    <script>
+        let uploadedFiles = {
+            source: null,
+            template: null
+        };
+
+        // 세션 확인 및 사용자 정보 로드
+        checkSession();
+        loadStats();
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
+                
+                if (!data.loggedIn) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                document.getElementById('userName').textContent = `${data.user.business_name} (${data.user.name})`;
+            } catch (error) {
+                console.error('세션 확인 오류:', error);
+                window.location.href = '/';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/upload/stats');
+                const stats = await response.json();
+                
+                document.getElementById('totalAttempts').textContent = stats.total_attempts;
+                document.getElementById('successCount').textContent = stats.success_count;
+                document.getElementById('errorCount').textContent = stats.error_count;
+                
+                if (stats.last_sent_time) {
+                    const lastSent = new Date(stats.last_sent_time);
+                    document.getElementById('lastSentTime').textContent = 
+                        `${lastSent.toLocaleTimeString()} ${stats.last_business_name || ''}`;
+                } else {
+                    document.getElementById('lastSentTime').textContent = '-';
+                }
+            } catch (error) {
+                console.error('통계 로드 오류:', error);
+            }
+        }
+
+        // 드래그 앤 드롭 이벤트
+        const sourceUploadArea = document.getElementById('sourceUploadArea');
+        const templateUploadArea = document.getElementById('templateUploadArea');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            sourceUploadArea.addEventListener(eventName, preventDefaults, false);
+            templateUploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            sourceUploadArea.addEventListener(eventName, highlight, false);
+            templateUploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            sourceUploadArea.addEventListener(eventName, unhighlight, false);
+            templateUploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        sourceUploadArea.addEventListener('drop', handleSourceDrop, false);
+        templateUploadArea.addEventListener('drop', handleTemplateDrop, false);
+
+        function handleSourceDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleSourceFile(files[0]);
+        }
+
+        function handleTemplateDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleTemplateFile(files[0]);
+        }
+
+        // 파일 선택 이벤트
+        document.getElementById('sourceFile').addEventListener('change', (e) => {
+            handleSourceFile(e.target.files[0]);
+        });
+
+        document.getElementById('templateFile').addEventListener('change', (e) => {
+            handleTemplateFile(e.target.files[0]);
+        });
+
+        function handleSourceFile(file) {
+            if (file) {
+                uploadedFiles.source = file;
+                document.getElementById('sourceFileName').textContent = file.name;
+                document.getElementById('sourceFileSize').textContent = formatFileSize(file.size);
+                checkFilesReady();
+            }
+        }
+
+        function handleTemplateFile(file) {
+            if (file) {
+                uploadedFiles.template = file;
+                document.getElementById('templateFileName').textContent = file.name;
+                document.getElementById('templateFileSize').textContent = formatFileSize(file.size);
+                checkFilesReady();
+            }
+        }
+
+        function checkFilesReady() {
+            const hasSource = uploadedFiles.source !== null;
+            const hasTemplate = uploadedFiles.template !== null;
+            
+            if (hasSource && hasTemplate) {
+                document.getElementById('fileInfo').classList.add('show');
+                // 파일 두 개가 준비되면 미리보기 요청
+                previewFiles();
+            }
+        }
+
+        // 파일 업로드 후 미리보기만 요청하는 함수
+        async function previewFiles() {
+            showLoading(true);
+            document.getElementById('previewTable').classList.remove('show');
+            document.getElementById('confirmBtn').disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('sourceFile', uploadedFiles.source);
+                formData.append('templateFile', uploadedFiles.template);
+
+                // 미리보기 데이터만 요청 (업로드 및 previewData만 반환)
+                const response = await fetch('/api/upload/files', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert(data.message, 'success');
+                    showPreview(data.previewData, data.sourceColumns);
+                    // 미리보기 후에만 확인 버튼 활성화
+                    document.getElementById('confirmBtn').disabled = false;
+                    // 미리보기 후 컬럼 정보 임시 저장 (전체 데이터 포함)
+                    window._previewUploadData = {
+                        sourceColumns: data.sourceColumns,
+                        templateColumns: data.templateColumns,
+                        sourceData: data.fullSourceData // 전체 데이터 전달
+                    };
+                } else {
+                    showAlert(data.error || '파일 업로드에 실패하였습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('파일 업로드 오류:', error);
+                showAlert('파일 업로드 처리 중 오류가 발생했습니다.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // "확인" 버튼 클릭 시 매핑 준비 및 페이지 이동
+        async function confirmUpload() {
+            if (!window._previewUploadData) {
+                showAlert('미리보기 데이터가 없습니다. 파일을 다시 업로드해주세요.', 'error');
+                return;
+            }
+            showLoading(true);
+            try {
+                // 매핑 준비 요청 (서버에 컬럼 정보 저장)
+                const confirmRes = await fetch('/api/upload/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(window._previewUploadData)
+                });
+                const confirmData = await confirmRes.json();
+                if (confirmRes.ok) {
+                    // Gemini 매핑 결과를 저장
+                    localStorage.setItem('uploadedMapping', JSON.stringify(confirmData.mapping));
+                    // 매핑에 필요한 데이터 저장 (localStorage 등)
+                    localStorage.setItem('uploadedData', JSON.stringify({
+                        sourceColumns: window._previewUploadData.sourceColumns,
+                        templateColumns: window._previewUploadData.templateColumns
+                    }));
+                    // 매핑 페이지로 이동
+                    window.location.href = '/mapping';
+                } else {
+                    showAlert(confirmData.error || '매핑 준비 중 오류가 발생했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('매핑 준비 오류:', error);
+                showAlert('매핑 준비 처리 중 오류가 발생했습니다.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showPreview(data, columns) {
+            const headerRow = document.getElementById('previewHeader');
+            const body = document.getElementById('previewBody');
+            
+            // 헤더 생성
+            headerRow.innerHTML = '';
+            columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                headerRow.appendChild(th);
+            });
+
+            // 데이터 행 생성
+            body.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell || '';
+                    tr.appendChild(td);
+                });
+                body.appendChild(tr);
+            });
+
+            document.getElementById('previewTable').classList.add('show');
+        }
+
+        function resetUpload() {
+            uploadedFiles = { source: null, template: null };
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('previewTable').classList.remove('show');
+            document.getElementById('confirmBtn').disabled = true;
+            document.getElementById('sourceFile').value = '';
+            document.getElementById('templateFile').value = '';
+            window._previewUploadData = undefined;
+            document.getElementById('sourceFileName').textContent = '-';
+            document.getElementById('sourceFileSize').textContent = '-';
+            document.getElementById('templateFileName').textContent = '-';
+            document.getElementById('templateFileSize').textContent = '-';
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                console.error('로그아웃 오류:', error);
+                window.location.href = '/';
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            const uploadSection = document.querySelector('.upload-section');
+            
+            if (show) {
+                loading.style.display = 'block';
+                uploadSection.style.display = 'none';
+            } else {
+                loading.style.display = 'none';
+                uploadSection.style.display = 'block';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html> 

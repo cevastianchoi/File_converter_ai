@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매핑 규칙 설정 - 런모아 라이브커머스 주문서 솔루션</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .mapping-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .header {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
+        }
+        .mapping-select {
+            margin-bottom: 20px;
+        }
+        .mapping-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .mapping-table th, .mapping-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .mapping-table th {
+            background: #667eea;
+            color: white;
+        }
+        .mapping-table select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert-error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+        .alert-success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="mapping-container">
+        <div class="header" id="mappingHeader">매핑 규칙 설정하기</div>
+        <div id="alert" class="alert"></div>
+        <div class="mapping-select">
+            <label for="mappingRuleSelect">[ 매핑 규칙 선택 ]</label>
+            <select id="mappingRuleSelect"></select>
+            <button class="btn btn-secondary" onclick="loadMappingRule()">불러오기</button>
+        </div>
+        <table class="mapping-table" id="mappingTable">
+            <thead>
+                <tr>
+                    <th>주문서 원본 컬럼</th>
+                    <th>→</th>
+                    <th>발주서 최종 컬럼</th>
+                </tr>
+            </thead>
+            <tbody id="mappingTableBody"></tbody>
+        </table>
+        <div class="button-group">
+            <button class="btn btn-secondary" onclick="addMappingRow()">+ 매핑 규칙 추가</button>
+            <button class="btn btn-secondary" onclick="saveTemplate()">템플릿 저장</button>
+            <button class="btn btn-primary" onclick="saveMappingAndGenerate()">저장하기</button>
+            <button class="btn btn-danger" onclick="resetMapping()">초기화</button>
+        </div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>처리 중...</p>
+        </div>
+    </div>
+    <script>
+        let sourceColumns = [];
+        let resultColumns = [];
+        let mappingRows = [];
+        let businessName = '';
+
+        // 페이지 진입 시 데이터 로드
+        window.onload = async function() {
+            await checkSession();
+            await loadColumns();
+            await loadMappingTemplates();
+        };
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
+                if (!data.loggedIn) {
+                    window.location.href = '/';
+                    return;
+                }
+                businessName = data.user.business_name;
+                document.getElementById('mappingHeader').textContent = `[${businessName}] 매핑 규칙 설정하기`;
+            } catch (error) {
+                window.location.href = '/';
+            }
+        }
+
+        async function loadColumns() {
+            // 서버에서 source/result 컬럼명 불러오기 (가장 최근 데이터)
+            try {
+                // 실제로는 서버에서 source/result 컬럼명, 매핑 추천값을 받아와야 함
+                // 여기서는 window.uploadedData를 활용하거나, 서버에서 별도 API 필요
+                // 예시로 localStorage 사용
+                const uploaded = JSON.parse(localStorage.getItem('uploadedData') || '{}');
+                sourceColumns = uploaded.sourceColumns || [];
+                resultColumns = uploaded.templateColumns || [];
+                if (sourceColumns.length === 0 || resultColumns.length === 0) {
+                    showAlert('업로드된 파일 정보가 없습니다. 대시보드로 이동합니다.', 'error');
+                    setTimeout(() => window.location.href = '/dashboard', 2000);
+                    return;
+                }
+                // Gemini 매핑 결과 반영
+                const mappingObj = JSON.parse(localStorage.getItem('uploadedMapping') || '{}');
+                if (Object.keys(mappingObj).length > 0) {
+                    mappingRows = Object.entries(mappingObj).map(([source, target]) => ({
+                        source,
+                        target: target || ''
+                    }));
+                } else {
+                    // fallback: 순서대로 매핑
+                    mappingRows = sourceColumns.map((src, idx) => ({ source: src, target: resultColumns[idx] || '' }));
+                }
+                renderMappingTable();
+            } catch (error) {
+                showAlert('컬럼 정보를 불러오지 못했습니다.', 'error');
+            }
+        }
+
+        async function loadMappingTemplates() {
+            try {
+                const res = await fetch('/api/mapping/templates');
+                const templates = await res.json();
+                const select = document.getElementById('mappingRuleSelect');
+                select.innerHTML = '<option value="">매핑 규칙 선택</option>';
+                templates.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                // 무시
+            }
+        }
+
+        async function loadMappingRule() {
+            const select = document.getElementById('mappingRuleSelect');
+            const name = select.value;
+            if (!name) return;
+            try {
+                const res = await fetch(`/api/mapping/template/${encodeURIComponent(name)}`);
+                const mappings = await res.json();
+                mappingRows = mappings;
+                renderMappingTable();
+            } catch (error) {
+                showAlert('매핑 규칙을 불러오지 못했습니다.', 'error');
+            }
+        }
+
+        function renderMappingTable() {
+            const tbody = document.getElementById('mappingTableBody');
+            tbody.innerHTML = '';
+            mappingRows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                // 소스 컬럼
+                const tdSource = document.createElement('td');
+                const selectSource = document.createElement('select');
+                sourceColumns.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col;
+                    opt.textContent = col;
+                    if (row.source === col) opt.selected = true;
+                    selectSource.appendChild(opt);
+                });
+                selectSource.onchange = e => { mappingRows[idx].source = e.target.value; };
+                tdSource.appendChild(selectSource);
+                // 화살표
+                const tdArrow = document.createElement('td');
+                tdArrow.textContent = '→';
+                // 결과 컬럼
+                const tdTarget = document.createElement('td');
+                const selectTarget = document.createElement('select');
+                // 첫 번째 옵션: 매핑되지 않음
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = '--- 매핑되지 않음 ---';
+                selectTarget.appendChild(emptyOpt);
+                resultColumns.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col;
+                    opt.textContent = col;
+                    selectTarget.appendChild(opt);
+                });
+                // Gemini 매핑 결과가 resultColumns에 없거나 null/빈 값이면 '매핑되지 않음' 선택
+                selectTarget.value = resultColumns.includes(row.target) ? row.target : '';
+                selectTarget.onchange = e => { mappingRows[idx].target = e.target.value; };
+                tdTarget.appendChild(selectTarget);
+                // 행 조립
+                tr.appendChild(tdSource);
+                tr.appendChild(tdArrow);
+                tr.appendChild(tdTarget);
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addMappingRow() {
+            mappingRows.push({ source: sourceColumns[0] || '', target: resultColumns[0] || '' });
+            renderMappingTable();
+        }
+
+        function resetMapping() {
+            mappingRows = sourceColumns.map((src, idx) => ({ source: src, target: resultColumns[idx] || '' }));
+            renderMappingTable();
+        }
+
+        async function saveTemplate() {
+            const mappingName = prompt('매핑 규칙 이름을 입력하세요:');
+            if (!mappingName) return;
+            showLoading(true);
+            try {
+                const res = await fetch('/api/mapping/save-template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mappingName, mappings: mappingRows })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(data.message, 'success');
+                    await loadMappingTemplates();
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('템플릿 저장 중 오류가 발생했습니다.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function saveMappingAndGenerate() {
+            showLoading(true);
+            try {
+                // 매핑 데이터 검증
+                const validMappings = mappingRows.filter(row => row.source && row.target);
+                if (validMappings.length === 0) {
+                    showAlert('유효한 매핑 규칙이 없습니다. 매핑을 설정해주세요.', 'error');
+                    showLoading(false);
+                    return;
+                }
+                
+                console.log('전송할 매핑 데이터:', validMappings);
+                
+                const res = await fetch('/api/mapping/generate-excel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mappings: validMappings })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    // 생성된 파일명/경로를 localStorage에 저장
+                    localStorage.setItem('generatedFileName', data.fileName);
+                    localStorage.setItem('generatedFilePath', data.filePath);
+                    showAlert(data.message, 'success');
+                    setTimeout(() => window.location.href = '/email', 1500);
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                console.error('매핑 저장 오류:', error);
+                showAlert('엑셀 파일 생성 중 오류가 발생했습니다.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            setTimeout(() => { alert.style.display = 'none'; }, 5000);
+        }
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) loading.style.display = 'block';
+            else loading.style.display = 'none';
+        }
+    </script>
+</body>
+</html> 
